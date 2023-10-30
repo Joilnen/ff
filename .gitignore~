@@ -52,4 +52,4 @@ Mkfile.old
 dkms.conf
 
 *.c~
-*.txt~
+*.c~
