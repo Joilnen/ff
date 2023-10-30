@@ -87,7 +87,7 @@ int ff_loop()
     for(;;)
     {
         char c = getch();
-        if (c == 'a') break;
+        if (c == 'q') break;
         // printf("%c\n", c);
     }
 }

@@ -49,7 +49,8 @@ int ff_ldir(struct ff_file *f)
             puts(ep->d_name);
         (void) closedir(dp);
     }
-    else{
+    else
+    {
         perror("* erro\n");
         return -1;
     }
