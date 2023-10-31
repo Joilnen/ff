@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <termios.h>
 #include <unistd.h>
 #include <dirent.h>
 #include <sys/types.h>
@@ -45,7 +46,7 @@ int ff_ldir(struct ff_file *f)
     dp = opendir(f->name);
     if (dp)
     {
-        while (ep = readdir(dp))
+        while ((ep = readdir(dp)))
             puts(ep->d_name);
         (void) closedir(dp);
     }
@@ -58,7 +59,7 @@ int ff_ldir(struct ff_file *f)
     return 0;
 }
 
-int ff_init(struct ff_file *f)
+int ff_init(struct termios *t, struct ff_file *f)
 {
     char buf[FF_BUF_SIZE];
     f->name = getcwd(buf, FF_BUF_SIZE - 1);
@@ -84,18 +85,28 @@ char getch()
 
 int ff_loop()
 {
+
+    struct termios ttmp, torig;
+    tcgetattr(0, &torig);
+    ttmp.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP |
+        INLCR | IGNCR | ICRNL | IXON);
+    tcsetattr(0, TCSANOW, &ttmp);
     for(;;)
     {
         char c = getch();
         if (c == 'q') break;
         // printf("%c\n", c);
     }
+    tcsetattr(0, TCSANOW, &torig);
+
+    return 0;
 }
 
 int main(int argc, char *argv[], char *env[])
 {
+    struct termios term;
     struct ff_file f;
-    ff_init(&f);
+    ff_init(&term, &f);
 
     printf("%s\n", f.name);
 
@@ -104,4 +115,3 @@ int main(int argc, char *argv[], char *env[])
 
     return 0;
 }
-
