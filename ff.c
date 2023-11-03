@@ -60,13 +60,26 @@ struct ff_file
     int perms;
 };
 
+struct ff_node
+{
+    struct ff_file file;
+    struct ff_node *prev, *next;
+};
+
+struct ff_list {
+    struct ff_node *head, *last, *nownode;
+    unsigned int sz;
+    char is_sorted;
+};
+
 struct ff_screen
 {
     int width, height;
-    struct ff_list *header, *message, *bottom;
-    struct ff_list *area0, *area1, *area2;
+    struct ff_list header, message, bottom;
+    struct ff_list area0, area1, area2;
     int header_width, area_width[3], area_height;
     int message_width, bottom_width, area_now;
+    int xcursor, ycursor;
 };
 
 struct ff_settings {
@@ -84,6 +97,11 @@ struct ff_settings {
     int (*screen_update)(struct ff_settings *self);
 
 } setts;
+
+static void ff_sort(struct ff_settings *self)
+{
+
+}
 
 static void get_screen_size(struct ff_settings *self)
 {
@@ -143,7 +161,7 @@ static int setts_screen_update(struct ff_settings *self)
     return 0;
 }
 
-char getch()
+static char getch()
 {
     int r;
     unsigned char c;
@@ -155,7 +173,7 @@ char getch()
 }
 
 
-int ff_loop(struct ff_settings *self)
+static int ff_loop(struct ff_settings *self)
 {
     struct timespec ts;
     ts.tv_sec = 0; ts.tv_nsec = FF_TIME_SCREEN_UPDATE;
@@ -180,7 +198,7 @@ int ff_loop(struct ff_settings *self)
     return 0;
 }
 
-int ff_screen(struct ff_settings *s)
+static int ff_screen(struct ff_settings *s)
 {
     char buf[FF_BUF_SIZE];
     s->dir.name = getcwd(buf, FF_BUF_SIZE - 1);
@@ -194,7 +212,7 @@ int ff_screen(struct ff_settings *s)
     return 0;
 }
 
-int ff_init(struct ff_settings *s)
+static int ff_init(struct ff_settings *s)
 {
     ioctl(0, TIOCGWINSZ, &s->w);
     s->screen_sets.width = s->w.c;
@@ -205,6 +223,7 @@ int ff_init(struct ff_settings *s)
     s->screen_sets.area_width[2] = s->screen_sets.width / 3;
     s->screen_sets.area_height = s->screen_sets.height - 2;
     s->screen_sets.area_now = 0;
+    s->screen_sets.xcursor = s->screen_sets.ycursor = 0;
 
     return 0;
 }
