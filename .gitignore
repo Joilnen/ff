@@ -54,5 +54,5 @@ dkms.conf
 CMakeFiles
 ff
 *.cmake
-*.c~
+*~
 *.txt~
