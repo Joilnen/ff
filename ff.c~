@@ -76,7 +76,7 @@ struct ff_screen
 {
     int width, height;
     struct ff_list header, message, bottom;
-    struct ff_list *area0, area1, area2;
+    struct ff_list area0, area1, area2;
     int header_width, area_width[3], area_height;
     int message_width, bottom_width, area_now;
     int xcursor, ycursor;
