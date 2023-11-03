@@ -14,13 +14,45 @@
 #include <sys/ioctl.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <time.h>
 
 #define FF_BUF_SIZE 500
+#define FF_TIME_SCREEN_UPDATE 100000000
 
-struct ff_wsize {
-    unsigned short rows, col;
-    unsigned short xpixel, ypixel;
-} ff_wsize;
+#define S_CSCREEN "\033[H\033[J"
+#define S_CM "\033[24;62H"
+#define S_CMR "\033[24;58H"
+#define S_UNDERL "\033[1m"
+#define S_AZUL "\033[44m\033[37m"
+#define S_VERM "\033[41m\033[37m"
+#define S_INV  "\033[7m"
+#define S_NORM "\033[0m"
+#define S_INFO "\033[24;0H\033[7m"
+#define S_INFO_ST "\033[1;65H"
+#define S_INFO_ST_1 "\033[2;65H"
+#define S_CARD "\033[0;60H"
+#define S_CHKLST "\033[%d;%dH%s\033[0m"
+#define S_CHKLST_DONE "\033[46m\033[30m\033[%d;%dH%s\033[0m"
+#define S_INFO2 "\033[46m\033[30m\033[24;0H"
+#define S_LIST "\033[%d;78H%d"
+#define S_FILEN "\033[0;55H"
+#define S_VENN S_CHKLST
+
+typedef enum tscreen {TMONO, TCOLOR} type_of_screen;
+
+#define CLEAR_SCREEN printf(S_CSCREEN)
+#define TYPE_OF_TERMINAL TCOLOR
+#define INFO(x) printf("%s%s%s", S_INFO, x, S_NORM)
+#define INFO2(x) printf("%s%s%s", S_INFO2, x, S_NORM)
+#define INFO_ST(x) printf("%s%s%s%s", S_INV, S_INFO_ST, x, S_NORM)
+#define CM printf("%s", m); fflush(stdout); getc(stdin)
+#define CMR(x) printf("%s", S_CMR"q + * tecle enter *"); fflush(stdout); x = getc(stdin)
+#define CKLSITEM(l,c,b,x) \
+    if (b) printf(S_CHKLST_DONE, l, c, x); \
+    else printf(S_CHKLST, l, c, x)
+#define INFO_FILE printf("%s%s%sf:%s%s", S_INFO_ST, __FILE__, S_INFO_ST_1, __FUNCTION__, S_NORM); fflush(stdout);
+
+char m[] = "Oi ui ui ";
 
 struct ff_file
 {
@@ -28,38 +60,74 @@ struct ff_file
     int perms;
 };
 
-struct ff_node
-{
-    struct ff_file file;
-    struct ff_node *left, *right;
-};
-
-struct ff_tree
-{
-    struct ff_node *root, *last, *lvisited;
-};
-
-struct ff_list
-{
-    struct ff_node *head, *last, *lvisited;
-};
-
 struct ff_screen
 {
+    int width, height;
     struct ff_list *header, *message, *bottom;
     struct ff_list *area0, *area1, *area2;
+    int header_width, area_width[3], area_height;
+    int message_width, bottom_width, area_now;
 };
 
-int ff_ldir(struct ff_file *f)
+struct ff_settings {
+
+    struct w {
+        unsigned short r, c;
+        unsigned short xp, yp;
+    } w;
+
+    struct ff_screen screen_sets;
+    struct termios term, tterm;
+    struct ff_file dir;
+
+    int (*move)(struct ff_settings *self, char c);
+    int (*screen_update)(struct ff_settings *self);
+
+} setts;
+
+static void get_screen_size(struct ff_settings *self)
 {
-    printf("%s %s\n", __FUNCTION__, f->name);
-    DIR *dp;
-    struct dirent *ep;
-    dp = opendir(f->name);
+    ioctl(0, TIOCGWINSZ, &self->w);
+    self->screen_sets.width = self->w.c;
+    self->screen_sets.height = self->w.r;
+}
+
+static void ff_filter(struct ff_settings *self, char *s)
+{
+    if (strlen(s) > self->screen_sets.area_width[0]){
+        s[self->screen_sets.area_width[0] - 2] = '>';
+        s[self->screen_sets.area_width[0] - 1] = '\0';
+    }
+}
+
+
+static int setts_move(struct ff_settings *self, char c)
+{
+
+    if (c == 'j') strcpy(m, "DOWN ");
+    if (c == 'k') strcpy(m, "UP ");
+    if (c == 'h') strcpy(m, "LEFT ");
+    if (c == 'l') strcpy(m, "RIGHT ");
+    if (c == 'c') strcpy(m, "Oi ui ui ");
+
+    return 0;
+}
+
+static int setts_screen_update(struct ff_settings *self)
+{
+    int i = 0, area_now;
+    printf("%s\n", self->dir.name);
+    DIR *dp = NULL;
+    struct dirent *ep = NULL;
+    dp = opendir(self->dir.name);
     if (dp)
     {
-        while ((ep = readdir(dp)))
+        while (i < self->screen_sets.area_height && (ep = readdir(dp)))
+        {
+            ff_filter(self, ep->d_name);
             puts(ep->d_name);
+            ++i;
+        }
         (void) closedir(dp);
     }
     else
@@ -68,31 +136,10 @@ int ff_ldir(struct ff_file *f)
         return -1;
     }
 
-    return 0;
-}
-
-int ff_screen(struct termios *t, struct ff_file *f)
-{
-    char buf[FF_BUF_SIZE];
-    f->name = getcwd(buf, FF_BUF_SIZE - 1);
-    if (f->name)
+    for (area_now = self->screen_sets.area_now; area_now < 3; area_now++)
     {
-        printf("%s\n", f->name);
-        f->name = (char *) malloc (sizeof(char) * FF_BUF_SIZE);
-        strcpy(f->name, buf);
+
     }
-
-    return 0;
-}
-
-int ff_init(struct termios *t, struct ff_file *f)
-{
-
-    ioctl( 0, TIOCGWINSZ, &ff_wsize);
-    int limit = ff_wsize.rows * ff_wsize.cols;
-    printf("Lines %d and Columns %d\n", ff_wsize.rows, ff_wsize.cols);
-    for( int i = 0; i < limit; i++ )
-        putchar( '+' );
 
     return 0;
 }
@@ -108,37 +155,67 @@ char getch()
         return c;
 }
 
-int ff_loop()
-{
 
+int ff_loop(struct ff_settings *self)
+{
+    struct timespec ts;
+    ts.tv_sec = 0; ts.tv_nsec = FF_TIME_SCREEN_UPDATE;
     struct termios ttmp, torig;
     tcgetattr(STDIN_FILENO, &torig);
     ttmp.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP |
         INLCR | IGNCR | ICRNL | IXON);
-    tcsetattr(STDIN_FILENO, TCSANOW, &ttmp);
     for(;;)
     {
+        tcsetattr(STDIN_FILENO, TCSANOW, &ttmp);
         char c = getch();
+        self->move(self, c);
+        tcsetattr(STDIN_FILENO, TCSANOW, &torig);
+        CLEAR_SCREEN;
+        self->screen_update(self);
+        CM;
+        nanosleep(&ts, &ts);
         if (c == 'q') break;
-        if (c == 'j') printf("PRA BAIXO\n");
-        if (c == 'k') printf("PRA CIMA\n");
-        if (c == 'h') printf("PRA ESQUERDA\n");
-        if (c == 'l') printf("PRA ESQUERDA\n");
-        // printf("%c\n", c);
     }
-    tcsetattr(STDIN_FILENO, TCSANOW, &torig);
+    CLEAR_SCREEN;
+
+    return 0;
+}
+
+int ff_screen(struct ff_settings *s)
+{
+    char buf[FF_BUF_SIZE];
+    s->dir.name = getcwd(buf, FF_BUF_SIZE - 1);
+    if (s->dir.name)
+    {
+        printf("%s\n", s->dir.name);
+        s->dir.name = (char *) malloc (sizeof(char) * FF_BUF_SIZE);
+        strcpy(s->dir.name, buf);
+    }
+
+    return 0;
+}
+
+int ff_init(struct ff_settings *s)
+{
+    ioctl(0, TIOCGWINSZ, &s->w);
+    s->screen_sets.width = s->w.c;
+    s->screen_sets.height = s->w.r;
+    s->move = setts_move;
+    s->screen_update = setts_screen_update;
+    s->screen_sets.area_width[0] = s->screen_sets.area_width[1] =
+    s->screen_sets.area_width[2] = s->screen_sets.width / 3;
+    s->screen_sets.area_height = s->screen_sets.height - 2;
+    s->screen_sets.area_now = 0;
 
     return 0;
 }
 
 int main(int argc, char *argv[], char *env[])
 {
-    struct termios term;
-    struct ff_file f;
-    ff_init(&term, &f);
-    ff_screen(&term, &f);
-    ff_ldir(&f);
-    ff_loop();
+    ff_init(&setts);
+    ff_screen(&setts);
+    ff_loop(&setts);
 
     return 0;
 }
+
