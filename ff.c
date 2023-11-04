@@ -12,6 +12,7 @@
 #include <dirent.h>
 #include <sys/types.h>
 #include <sys/ioctl.h>
+#include <sys/stat.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <time.h>
@@ -135,6 +136,7 @@ static int setts_screen_update(struct ff_settings *self)
     int i = 0, area_now;
     printf("%s\n", self->dir.name);
     DIR *dp = NULL;
+    struct stat st;
     struct dirent *ep = NULL;
     dp = opendir(self->dir.name);
     if (dp)
@@ -142,7 +144,14 @@ static int setts_screen_update(struct ff_settings *self)
         while (i < self->screen_sets.area_height && (ep = readdir(dp)))
         {
             ff_filter(self, ep->d_name);
-            puts(ep->d_name);
+            printf("%s ", ep->d_name);
+            stat(ep->d_name, &st);
+            if ((st.st_mode & S_IFMT) == S_IFREG)
+                printf("file\n");
+            else  if ((st.st_mode & S_IFMT) == S_IFDIR)
+                printf("dir\n");
+            else
+                printf("\n");
             ++i;
         }
         (void) closedir(dp);
