@@ -56,3 +56,4 @@ ff
 *.cmake
 *~
 *.txt~
+build/

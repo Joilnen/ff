@@ -179,7 +179,8 @@ static int ff_loop(struct ff_settings *self)
     ts.tv_sec = 0; ts.tv_nsec = FF_TIME_SCREEN_UPDATE;
     struct termios ttmp, torig;
     tcgetattr(STDIN_FILENO, &torig);
-    ttmp.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP |
+    ttmp = torig;
+    ttmp.c_lflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP |
         INLCR | IGNCR | ICRNL | IXON);
     for(;;)
     {
