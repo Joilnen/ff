@@ -4,6 +4,12 @@
  * Lincense MIT
  */
 
+/*format
+ * la{l d} ca{"ff-file manager"} ra{s}
+ * a0{sy{+}f } a1{sy{+}f } a2{sy{+}f}
+ * la{l d} ca{"ff-file manager"} ra{s}
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
