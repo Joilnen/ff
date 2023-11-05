@@ -16,10 +16,10 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <time.h>
+#include <math.h>
 
 #define FF_NUMBER_OF_AREAS 3
-#define FF_AREA0_WIDTH_FACTOR 3
-#define FF_AREA1_WIDTH_FACTOR 3
+#define FF_AREA_WIDTH_FACTOR 16
 
 #define FF_BUF_SIZE 500
 #define FF_TIME_SCREEN_UPDATE 100000000
@@ -238,8 +238,10 @@ static int ff_init(struct ff_settings *s)
     s->screen_sets.height = s->w.r;
     s->move = setts_move;
     s->screen_update = setts_screen_update;
-    s->screen_sets.area_width[0] = s->screen_sets.area_width[1] =
-    s->screen_sets.area_width[2] = s->screen_sets.width / 3;
+    int piece = (int) ceil(s->screen_sets.width / FF_AREA_WIDTH_FACTOR);
+    s->screen_sets.area_width[0] = 4 * piece;
+    s->screen_sets.area_width[1] = s->screen_sets.area_width[2] =
+        6 * piece;
     s->screen_sets.area_height = s->screen_sets.height - 2;
     s->screen_sets.area_now = 0;
     s->screen_sets.xcursor = s->screen_sets.ycursor = 0;
