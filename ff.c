@@ -17,6 +17,10 @@
 #include <fcntl.h>
 #include <time.h>
 
+#define FF_NUMBER_OF_AREAS 3
+#define FF_AREA0_WIDTH_FACTOR 3
+#define FF_AREA1_WIDTH_FACTOR 3
+
 #define FF_BUF_SIZE 500
 #define FF_TIME_SCREEN_UPDATE 100000000
 
@@ -53,7 +57,11 @@ typedef enum tscreen {TMONO, TCOLOR} type_of_screen;
     else printf(S_CHKLST, l, c, x)
 #define INFO_FILE printf("%s%s%sf:%s%s", S_INFO_ST, __FILE__, S_INFO_ST_1, __FUNCTION__, S_NORM); fflush(stdout);
 
-char m[] = "Oi ui ui ";
+#define FF_MIN(a, b) (a < b) ? (a) : (b)
+#define FF_MAX(a, b) !FF_MIN(a, b)
+#define FF_ABS(a) (a < 0) ? -(a) : a
+
+char m[] = "STOP TEST MESSAGE ";
 
 struct ff_file
 {
@@ -113,7 +121,8 @@ static void get_screen_size(struct ff_settings *self)
 
 static void ff_filter(struct ff_settings *self, char *s)
 {
-    if (strlen(s) > self->screen_sets.area_width[0]){
+    if (strlen(s) > self->screen_sets.area_width[0])
+    {
         s[self->screen_sets.area_width[0] - 2] = '>';
         s[self->screen_sets.area_width[0] - 1] = '\0';
     }
@@ -126,7 +135,7 @@ static int setts_move(struct ff_settings *self, char c)
     if (c == 'k') strcpy(m, "UP ");
     if (c == 'h') strcpy(m, "LEFT ");
     if (c == 'l') strcpy(m, "RIGHT ");
-    if (c == 'c') strcpy(m, "Oi ui ui ");
+    if (c == 'c') strcpy(m, "STOP TEST MESSAGE ");
 
     return 0;
 }
@@ -190,7 +199,7 @@ static int ff_loop(struct ff_settings *self)
     tcgetattr(STDIN_FILENO, &torig);
     ttmp = torig;
     ttmp.c_lflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP |
-        INLCR | IGNCR | ICRNL | IXON);
+        INLCR | IGNCR | ICRNL | IXON | ECHOE);
     for(;;)
     {
         tcsetattr(STDIN_FILENO, TCSANOW, &ttmp);
