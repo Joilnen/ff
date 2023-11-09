@@ -118,6 +118,22 @@ static void ff_sort(struct ff_settings *self)
 
 }
 
+static int ff_list_init(struct ff_settings *self)
+{
+    self->screen_sets.area0.head =
+    self->screen_sets.area1.last =
+    self->screen_sets.area2.nownode = NULL;
+
+    return 0;
+}
+
+static int ff_list_insert(struct ff_settings *self, struct ff_node *n)
+{
+
+
+    return 0;
+}
+
 static void get_screen_size(struct ff_settings *self)
 {
     ioctl(0, TIOCGWINSZ, &self->w);
@@ -161,6 +177,7 @@ static int setts_screen_update(struct ff_settings *self)
             ff_filter(self, ep->d_name);
             printf("%s ", ep->d_name);
             stat(ep->d_name, &st);
+            ff_list_insert(self, ep->d_name);
             if ((st.st_mode & S_IFMT) == S_IFREG)
                 printf("file\n");
             else  if ((st.st_mode & S_IFMT) == S_IFDIR)
@@ -259,6 +276,7 @@ int main(int argc, char *argv[], char *env[])
 {
     ff_init(&setts);
     ff_screen(&setts);
+    ff_list_init(&setts);
     ff_loop(&setts);
 
     return 0;
