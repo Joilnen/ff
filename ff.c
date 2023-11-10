@@ -113,6 +113,14 @@ struct ff_settings {
 
 } setts;
 
+static struct ff_node *ff_create_node(char *name)
+{
+    struct ff_node *n = (struct ff_node*) malloc(sizeof(struct ff_node));
+    n->file.name = name;
+    n->prev = n->next = NULL;
+    return n;
+}
+
 static void ff_sort(struct ff_settings *self)
 {
 
@@ -129,7 +137,31 @@ static int ff_list_init(struct ff_settings *self)
 
 static int ff_list_insert(struct ff_settings *self, struct ff_node *n)
 {
-
+    if (!self->screen_sets.area0.head)
+    {
+        self->screen_sets.area0.head =
+        self->screen_sets.area0.last =
+        self->screen_sets.area0.nownode = n;
+    }
+    else
+    {
+        if (self->screen_sets.area0.head->file.name[0] > n->file.name[0])
+        {
+            n->next = self->screen_sets.area0.head;
+            self->screen_sets.area0.head->prev = n;
+            self->screen_sets.area0.nownode = n;
+            self->screen_sets.area0.head = n;
+        }
+        else
+        {
+            struct ff_node *tmp;
+            n->prev = self->screen_sets.area0.head;
+            tmp = self->screen_sets.area0.head->next;
+            self->screen_sets.area0.head->next = n;
+            self->screen_sets.area0.nownode = n;
+            n->next = tmp;
+        }
+    }
 
     return 0;
 }
@@ -177,7 +209,7 @@ static int setts_screen_update(struct ff_settings *self)
             ff_filter(self, ep->d_name);
             printf("%s ", ep->d_name);
             stat(ep->d_name, &st);
-            ff_list_insert(self, ep->d_name);
+            ff_list_insert(self, ff_create_node(ep->d_name));
             if ((st.st_mode & S_IFMT) == S_IFREG)
                 printf("file\n");
             else  if ((st.st_mode & S_IFMT) == S_IFDIR)
