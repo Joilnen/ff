@@ -24,6 +24,9 @@
 #include <time.h>
 #include <math.h>
 
+typedef enum tscreen {TMONO, TCOLOR} type_of_screen;
+enum EV {NONE, UP, DOWN, LEFT, RIGHT, DONE, TIMEOUT, NEVENTS};
+
 #define FF_NUMBER_OF_AREAS 3
 #define FF_AREA_WIDTH_FACTOR 16
 
@@ -48,8 +51,6 @@
 #define S_LIST "\033[%d;78H%d"
 #define S_FILEN "\033[0;55H"
 #define S_VENN S_CHKLST
-
-typedef enum tscreen {TMONO, TCOLOR} type_of_screen;
 
 #define CLEAR_SCREEN printf(S_CSCREEN)
 #define TYPE_OF_TERMINAL TCOLOR
@@ -111,12 +112,14 @@ struct ff_settings {
     int (*move)(struct ff_settings *self, char c);
     int (*screen_update)(struct ff_settings *self);
 
+    unsigned int ev;
 } setts;
 
 static struct ff_node *ff_create_node(char *name)
 {
     struct ff_node *n = (struct ff_node*) malloc(sizeof(struct ff_node));
-    n->file.name = name;
+    n->file.name = calloc(strlen(name) + 1, sizeof(char));
+    strncpy(n->file.name, name, strlen(name));
     n->prev = n->next = NULL;
     return n;
 }
@@ -124,6 +127,15 @@ static struct ff_node *ff_create_node(char *name)
 static void ff_sort(struct ff_settings *self)
 {
 
+}
+
+static void ff_print_list(struct ff_settings *self)
+{
+    struct ff_node *tmp = NULL;
+    tmp = self->screen_sets.area0.head;
+    for (;tmp; tmp = tmp->next)
+        printf("%s %s\n", __FUNCTION__, tmp->file.name);
+        // printf("f: %s\n", tmp->file.name);
 }
 
 static int ff_list_init(struct ff_settings *self)
@@ -184,12 +196,30 @@ static void ff_filter(struct ff_settings *self, char *s)
 
 static int setts_move(struct ff_settings *self, char c)
 {
+    if (c == 'j') {
+        strcpy(m, "DOWN ");
+        self->ev = DOWN;
+    }
 
-    if (c == 'j') strcpy(m, "DOWN ");
-    if (c == 'k') strcpy(m, "UP ");
-    if (c == 'h') strcpy(m, "LEFT ");
-    if (c == 'l') strcpy(m, "RIGHT ");
-    if (c == 'c') strcpy(m, "STOP TEST MESSAGE ");
+    if (c == 'k') {
+        strcpy(m, "UP ");
+        self->ev = UP;
+    }
+
+    if (c == 'h') {
+        strcpy(m, "LEFT ");
+        self->ev = LEFT;
+    }
+
+    if (c == 'l') {
+        strcpy(m, "RIGHT ");
+        self->ev = RIGHT;
+    }
+
+    if (c == 'c') {
+        strcpy(m, "STOP TEST MESSAGE ");
+        self->ev = NONE;
+    }
 
     return 0;
 }
@@ -201,35 +231,47 @@ static int setts_screen_update(struct ff_settings *self)
     DIR *dp = NULL;
     struct stat st;
     struct dirent *ep = NULL;
-    dp = opendir(self->dir.name);
-    if (dp)
+    switch(self->ev)
     {
-        while (i < self->screen_sets.area_height && (ep = readdir(dp)))
-        {
-            ff_filter(self, ep->d_name);
-            printf("%s ", ep->d_name);
-            stat(ep->d_name, &st);
-            ff_list_insert(self, ff_create_node(ep->d_name));
-            if ((st.st_mode & S_IFMT) == S_IFREG)
-                printf("file\n");
-            else  if ((st.st_mode & S_IFMT) == S_IFDIR)
-                printf("dir\n");
+        default:
+            // update;
+            break;
+        case DOWN:
+            dp = opendir(self->dir.name);
+            if (dp)
+            {
+                while (i < self->screen_sets.area_height && (ep = readdir(dp)))
+                {
+                    ff_filter(self, ep->d_name);
+                    printf("%s ", ep->d_name);
+                    stat(ep->d_name, &st);
+                    if ((st.st_mode & S_IFMT) == S_IFREG)
+                        printf("file\n");
+                    else  if ((st.st_mode & S_IFMT) == S_IFDIR)
+                        printf("dir\n");
+                    else
+                        printf("\n");
+                    ++i;
+                }
+            }
             else
-                printf("\n");
-            ++i;
-        }
-        (void) closedir(dp);
-    }
-    else
-    {
-        perror("* erro\n");
-        return -1;
+            {
+                perror("* erro\n");
+                return -1;
+            }
+            (void) closedir(dp);
+        break;
+        case UP:
+            ff_print_list(self);
     }
 
+    /****
+     * update areas
     for (area_now = self->screen_sets.area_now; area_now < 3; area_now++)
     {
 
     }
+    ****/
 
     return 0;
 }
@@ -245,6 +287,22 @@ static char getch()
         return c;
 }
 
+static void ff_destroy_areas(struct ff_settings *self)
+{
+    struct ff_node *tmp, *todel;
+    tmp = self->screen_sets.area0.head;
+    for (; tmp; tmp = tmp->next)
+        if (tmp->file.name) free(tmp->file.name);
+    tmp = self->screen_sets.area0.head;
+    for (; tmp;)
+    {
+        todel = tmp;
+        if (todel) {
+            tmp = tmp->next;
+            free(todel);
+        }
+    }
+}
 
 static int ff_loop(struct ff_settings *self)
 {
@@ -261,45 +319,74 @@ static int ff_loop(struct ff_settings *self)
         char c = getch();
         self->move(self, c);
         tcsetattr(STDIN_FILENO, TCSANOW, &torig);
-        CLEAR_SCREEN;
         self->screen_update(self);
         CM;
         nanosleep(&ts, &ts);
+        CLEAR_SCREEN;
         if (c == 'q') break;
     }
-    CLEAR_SCREEN;
+    ff_destroy_areas(self);
 
     return 0;
 }
 
-static int ff_screen(struct ff_settings *s)
+static int ff_screen(struct ff_settings *self)
 {
     char buf[FF_BUF_SIZE];
-    s->dir.name = getcwd(buf, FF_BUF_SIZE - 1);
-    if (s->dir.name)
+    self->dir.name = getcwd(buf, FF_BUF_SIZE - 1);
+    if (self->dir.name)
     {
-        printf("%s\n", s->dir.name);
-        s->dir.name = (char *) malloc (sizeof(char) * FF_BUF_SIZE);
-        strcpy(s->dir.name, buf);
+        printf("%self\n", self->dir.name);
+        self->dir.name = (char *) malloc (sizeof(char) * FF_BUF_SIZE);
+        strcpy(self->dir.name, buf);
     }
 
     return 0;
 }
 
-static int ff_init(struct ff_settings *s)
+static int ff_create_areas(struct ff_settings *self)
 {
-    ioctl(0, TIOCGWINSZ, &s->w);
-    s->screen_sets.width = s->w.c;
-    s->screen_sets.height = s->w.r;
-    s->move = setts_move;
-    s->screen_update = setts_screen_update;
-    int piece = (int) ceil(s->screen_sets.width / FF_AREA_WIDTH_FACTOR);
-    s->screen_sets.area_width[0] = 4 * piece;
-    s->screen_sets.area_width[1] = s->screen_sets.area_width[2] =
+    int i = 0, area_now;
+    printf("%s\n", self->dir.name);
+    DIR *dp = NULL;
+    struct stat st;
+    struct dirent *ep = NULL;
+    dp = opendir(self->dir.name);
+    if (dp)
+    {
+        while (i < self->screen_sets.area_height && (ep = readdir(dp)))
+        {
+            ff_filter(self, ep->d_name);
+            stat(ep->d_name, &st);
+            ff_list_insert(self, ff_create_node(ep->d_name));
+        }
+        (void) closedir(dp);
+    }
+    else
+    {
+        perror("* erro\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+static int ff_init(struct ff_settings *self)
+{
+    ioctl(0, TIOCGWINSZ, &self->w);
+    self->screen_sets.width = self->w.c;
+    self->screen_sets.height = self->w.r;
+    self->move = setts_move;
+    self->screen_update = setts_screen_update;
+    int piece = (int) ceil(self->screen_sets.width / FF_AREA_WIDTH_FACTOR);
+    self->screen_sets.area_width[0] = 4 * piece;
+    self->screen_sets.area_width[1] = self->screen_sets.area_width[2] =
         6 * piece;
-    s->screen_sets.area_height = s->screen_sets.height - 2;
-    s->screen_sets.area_now = 0;
-    s->screen_sets.xcursor = s->screen_sets.ycursor = 0;
+    self->screen_sets.area_height = self->screen_sets.height - 2;
+    self->screen_sets.area_now = 0;
+    self->screen_sets.xcursor = self->screen_sets.ycursor = 0;
+
+    self->ev = NONE;
 
     return 0;
 }
@@ -309,6 +396,7 @@ int main(int argc, char *argv[], char *env[])
     ff_init(&setts);
     ff_screen(&setts);
     ff_list_init(&setts);
+    ff_create_areas(&setts);
     ff_loop(&setts);
 
     return 0;
