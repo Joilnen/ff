@@ -131,11 +131,14 @@ static void ff_sort(struct ff_settings *self)
 
 static void ff_print_list(struct ff_settings *self)
 {
+    int i = 0;
     struct ff_node *tmp = NULL;
     tmp = self->screen_sets.area0.head;
-    for (;tmp; tmp = tmp->next)
+    for (;tmp && i < self->screen_sets.area_height; tmp = tmp->next)
+    {
         printf("%s %s\n", __FUNCTION__, tmp->file.name);
-        // printf("f: %s\n", tmp->file.name);
+        ++i;
+    }
 }
 
 static int ff_list_init(struct ff_settings *self)
