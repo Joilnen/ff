@@ -134,9 +134,9 @@ static void ff_print_list(struct ff_settings *self)
     int i = 0;
     struct ff_node *tmp = NULL;
     tmp = self->screen_sets.area0.head;
-    for (;tmp && i < self->screen_sets.area_height; tmp = tmp->next)
+    for (; tmp && i < self->screen_sets.area_height; tmp = tmp->next)
     {
-        printf("%s %s\n", __FUNCTION__, tmp->file.name);
+        printf("%s\n", tmp->file.name);
         ++i;
     }
 }
@@ -146,6 +146,33 @@ static int ff_list_init(struct ff_settings *self)
     self->screen_sets.area0.head =
     self->screen_sets.area1.last =
     self->screen_sets.area2.nownode = NULL;
+
+    return 0;
+}
+
+static int ff_list_insert_helper(struct ff_node *list, struct ff_node *n)
+{
+    if (!list) {
+        n->prev = list->prev;
+        list->prev->next = n;
+    }
+
+    if (list->file.name[0] < n->file.name[0])
+    {
+        struct ff_node *tmp;
+        tmp = list->next;
+        ff_list_insert_helper(tmp, n);
+    }
+    else
+    {
+        struct ff_node *tl, *tr;
+        tl = list;
+        tr = list->next;
+        list->next = n;
+        n->prev = list;
+        tr->prev = n;
+        n->next = tr;
+    }
 
     return 0;
 }
@@ -175,6 +202,7 @@ static int ff_list_insert(struct ff_settings *self, struct ff_node *n)
             self->screen_sets.area0.head->next = n;
             self->screen_sets.area0.nownode = n;
             n->next = tmp;
+            // ff_list_insert_helper(self->screen_sets.area0.head, n);
         }
     }
 
