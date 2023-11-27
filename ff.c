@@ -98,9 +98,11 @@ struct ff_screen
     int xcursor, ycursor;
 };
 
-struct ff_settings {
+struct ff_settings
+{
 
-    struct w {
+    struct w
+    {
         unsigned short r, c;
         unsigned short xp, yp;
     } w;
@@ -152,7 +154,8 @@ static int ff_list_init(struct ff_settings *self)
 
 static int ff_list_insert_helper(struct ff_node *list, struct ff_node *n)
 {
-    if (!list) {
+    if (!list)
+    {
         n->prev = list->prev;
         list->prev->next = n;
     }
@@ -227,27 +230,32 @@ static void ff_filter(struct ff_settings *self, char *s)
 
 static int setts_move(struct ff_settings *self, char c)
 {
-    if (c == 'j') {
+    if (c == 'j')
+    {
         strcpy(m, "DOWN ");
         self->ev = DOWN;
     }
 
-    if (c == 'k') {
+    if (c == 'k')
+    {
         strcpy(m, "UP ");
         self->ev = UP;
     }
 
-    if (c == 'h') {
+    if (c == 'h')
+    {
         strcpy(m, "LEFT ");
         self->ev = LEFT;
     }
 
-    if (c == 'l') {
+    if (c == 'l')
+    {
         strcpy(m, "RIGHT ");
         self->ev = RIGHT;
     }
 
-    if (c == 'c') {
+    if (c == 'c')
+    {
         strcpy(m, "STOP TEST MESSAGE ");
         self->ev = NONE;
     }
@@ -328,7 +336,8 @@ static void ff_destroy_areas(struct ff_settings *self)
     for (; tmp;)
     {
         todel = tmp;
-        if (todel) {
+        if (todel)
+        {
             tmp = tmp->next;
             free(todel);
         }
