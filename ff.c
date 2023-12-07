@@ -82,7 +82,8 @@ struct ff_node
     struct ff_node *prev, *next;
 };
 
-struct ff_list {
+struct ff_list
+{
     struct ff_node *head, *last, *nownode;
     unsigned int sz;
     char is_sorted;
