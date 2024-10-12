@@ -25,7 +25,8 @@
 #include <math.h>
 
 typedef enum tscreen {TMONO, TCOLOR} type_of_screen;
-enum EV {NONE, UP, DOWN, LEFT, RIGHT, DONE, TIMEOUT, NEVENTS};
+enum EV {NONE, UP, DOWN, LEFT, RIGHT, DONE, TIMEOUT, NEVENTS,
+         UPDATE};
 
 #define FF_NUMBER_OF_AREAS 3
 #define FF_AREA_WIDTH_FACTOR 16
@@ -101,7 +102,6 @@ struct ff_screen
 
 struct ff_settings
 {
-
     struct w
     {
         unsigned short r, c;
